@@ -1,357 +1,131 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useLanguage } from '../context/LanguageContext';
-import { useBookmarks } from '../context/BookmarkContext';
-import { schemes, getCategories, Scheme } from '../data/schemes';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { toast } from '@/hooks/use-toast';
-import { motion } from 'framer-motion';
-import { fadeInUp } from '../utils/animations';
-import { Search, Filter, Bookmark, BookmarkCheck, Share2, ChevronRight, FileDown } from 'lucide-react';
+import { Filter, Search } from 'lucide-react';
+import { schemes } from '../data/schemes';
+import { Input } from './ui/input';
 
 const SchemeSearch: React.FC = () => {
   const { translate } = useLanguage();
-  const { addBookmark, isBookmarked, removeBookmark } = useBookmarks();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filteredSchemes, setFilteredSchemes] = useState<Scheme[]>(schemes);
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-  const [activeScheme, setActiveScheme] = useState<Scheme | null>(null);
-  const [showDetails, setShowDetails] = useState(false);
-  const categories = getCategories();
-
-  useEffect(() => {
-    filterSchemes();
-  }, [searchTerm, selectedCategories]);
-
-  const filterSchemes = () => {
-    let filtered = schemes;
-    
-    // Filter by search term
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      filtered = filtered.filter(scheme => 
-        scheme.name.toLowerCase().includes(term) || 
-        scheme.description.toLowerCase().includes(term) ||
-        scheme.category.toLowerCase().includes(term)
-      );
-    }
-    
-    // Filter by selected categories
-    if (selectedCategories.length > 0) {
-      filtered = filtered.filter(scheme => 
-        selectedCategories.includes(scheme.category)
-      );
-    }
-    
-    setFilteredSchemes(filtered);
-  };
-
-  const toggleCategory = (category: string) => {
-    setSelectedCategories(prev => 
-      prev.includes(category) 
-        ? prev.filter(c => c !== category) 
-        : [...prev, category]
-    );
-  };
-
-  const handleBookmark = (scheme: Scheme) => {
-    if (isBookmarked(scheme.id)) {
-      removeBookmark(scheme.id);
-      toast({
-        title: translate("Removed from Bookmarks"),
-        description: translate("The scheme has been removed from your bookmarks."),
-      });
-    } else {
-      addBookmark(scheme);
-      toast({
-        title: translate("Scheme Bookmarked"),
-        description: translate("You can access this scheme in your bookmarks."),
-      });
-    }
-  };
-
-  const handleShare = (scheme: Scheme) => {
-    if (navigator.share) {
-      navigator.share({
-        title: scheme.name,
-        text: `${scheme.name}: ${scheme.description}`,
-        url: window.location.href,
-      }).then(() => {
-        toast({
-          title: translate("Shared Successfully"),
-          description: translate("The scheme information has been shared."),
-        });
-      }).catch((error) => {
-        console.error('Error sharing:', error);
-      });
-    } else {
-      // Fallback for browsers that don't support the Share API
-      const shareText = `${scheme.name}: ${scheme.description} - ${scheme.benefits}`;
-      navigator.clipboard.writeText(shareText);
-      toast({
-        title: translate("Copied to Clipboard"),
-        description: translate("The scheme information has been copied to clipboard."),
-      });
-    }
-  };
-
-  const handleExport = (scheme: Scheme) => {
-    const schemeText = `
-      ${scheme.name}
-      ${'-'.repeat(scheme.name.length)}
-      
-      ${translate("Description")}: ${scheme.description}
-      
-      ${translate("Eligibility")}: ${scheme.eligibility}
-      
-      ${translate("Benefits")}: ${scheme.benefits}
-      
-      ${translate("Category")}: ${scheme.category}
-      
-      ${scheme.stateSpecific ? `${translate("State")}: ${scheme.state}` : ''}
-    `;
-    
-    const blob = new Blob([schemeText], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${scheme.name.replace(/\s+/g, '-').toLowerCase()}.txt`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    
-    toast({
-      title: translate("Export Successful"),
-      description: translate("Scheme details have been exported as a text file."),
-    });
-  };
-
-  const viewDetails = (scheme: Scheme) => {
-    setActiveScheme(scheme);
-    setShowDetails(true);
-  };
-
-  const closeDetails = () => {
-    setShowDetails(false);
-  };
-
+  const [searchQuery, setSearchQuery] = useState('');
+  
   return (
-    <section id="scheme-search" className="py-16 bg-gradient-to-b from-transparent to-primary/10">
+    <section id="scheme-search" className="py-16 bg-muted/30">
       <div className="container mx-auto px-4">
         <div className="text-center mb-12">
           <span className="px-3 py-1 rounded-full text-sm font-medium bg-primary/10 text-primary">
-            {translate("Scheme Directory")}
+            {translate("Search")}
           </span>
           <h2 className="text-3xl font-bold mt-2">
-            {translate("Find All Government Schemes")}
+            {translate("Find Relevant Schemes")}
           </h2>
           <p className="mt-3 text-foreground/70 max-w-2xl mx-auto">
-            {translate("Search and filter through all available government schemes. View details, bookmark, or share schemes of interest.")}
+            {translate("Search through thousands of government schemes to find ones relevant to your needs.")}
           </p>
         </div>
         
-        {/* Search and filters */}
-        <div className="max-w-4xl mx-auto mb-10">
-          <div className="flex flex-col md:flex-row gap-4 mb-6">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-foreground/50" />
-              <Input
-                type="text"
-                placeholder={translate("Search schemes...")}
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
+        <div className="max-w-4xl mx-auto"> {/* Increased from max-w-3xl to max-w-4xl */}
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search className="h-5 w-5 text-muted-foreground" />
             </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-sm font-medium flex items-center">
-                <Filter className="w-4 h-4 mr-1" />
-                {translate("Filter by category:")}
-              </span>
-              {categories.map(category => (
-                <Badge
-                  key={category}
-                  variant={selectedCategories.includes(category) ? "default" : "outline"}
-                  className="cursor-pointer"
-                  onClick={() => toggleCategory(category)}
-                >
-                  {category}
-                </Badge>
-              ))}
+            <Input
+              type="text"
+              placeholder={translate("Search for schemes by name, category, or keywords...")}
+              className="pl-10 pr-10 py-6 w-full shadow-sm focus:ring-primary focus:border-primary"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+            <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+              <button className="p-1.5 rounded-md bg-muted hover:bg-muted/80 transition-colors">
+                <Filter className="h-4 w-4 text-muted-foreground" />
+              </button>
             </div>
           </div>
-        </div>
-        
-        {/* Scheme cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
-          {filteredSchemes.length > 0 ? (
-            filteredSchemes.map((scheme) => (
-              <motion.div
-                key={scheme.id}
-                variants={fadeInUp}
-                initial="hidden"
-                animate="visible"
-                className="h-full"
-              >
-                <Card className="h-full flex flex-col hover:shadow-md transition-shadow">
-                  <CardHeader className="pb-2">
-                    <div className="flex justify-between items-start">
-                      <Badge variant="outline" className="mb-2">
-                        {scheme.category}
-                      </Badge>
-                      {scheme.stateSpecific && (
-                        <Badge variant="secondary" className="ml-2">
-                          {scheme.state}
-                        </Badge>
-                      )}
+          
+          <div className="mt-6 flex flex-wrap gap-3 justify-center">
+            <button className="px-4 py-2 rounded-full bg-primary/10 text-primary text-sm hover:bg-primary/20 transition-colors">
+              {translate("All Schemes")}
+            </button>
+            <button className="px-4 py-2 rounded-full bg-white text-foreground/70 text-sm hover:bg-gray-100 transition-colors">
+              {translate("Agriculture")}
+            </button>
+            <button className="px-4 py-2 rounded-full bg-white text-foreground/70 text-sm hover:bg-gray-100 transition-colors">
+              {translate("Education")}
+            </button>
+            <button className="px-4 py-2 rounded-full bg-white text-foreground/70 text-sm hover:bg-gray-100 transition-colors">
+              {translate("Health")}
+            </button>
+            <button className="px-4 py-2 rounded-full bg-white text-foreground/70 text-sm hover:bg-gray-100 transition-colors">
+              {translate("Housing")}
+            </button>
+            <button className="px-4 py-2 rounded-full bg-white text-foreground/70 text-sm hover:bg-gray-100 transition-colors">
+              {translate("Employment")}
+            </button>
+          </div>
+          
+          <div className="mt-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
+            {schemes
+              .filter(scheme => 
+                searchQuery === '' || 
+                scheme.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                scheme.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                scheme.description.toLowerCase().includes(searchQuery.toLowerCase())
+              )
+              .slice(0, 4)
+              .map((scheme) => (
+                <div key={scheme.id} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                  <div className="flex items-center mb-4">
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center bg-${scheme.colorScheme || "primary"}/10`}>
+                      <scheme.icon className={`w-5 h-5 text-${scheme.colorScheme || "primary"}`} />
                     </div>
-                    <CardTitle className="text-lg">{scheme.name}</CardTitle>
-                    <CardDescription className="line-clamp-2">{scheme.description}</CardDescription>
-                  </CardHeader>
-                  <CardContent className="flex-grow">
-                    <div className="text-sm">
-                      <p className="font-medium mb-1">{translate("Benefits")}:</p>
-                      <p className="text-foreground/70 line-clamp-2">{scheme.benefits}</p>
+                    <div className="ml-3">
+                      <h3 className="font-medium">{translate(scheme.name)}</h3>
+                      <p className="text-xs text-muted-foreground">{translate(scheme.category)}</p>
                     </div>
-                  </CardContent>
-                  <CardFooter className="flex justify-between pt-2 border-t">
-                    <Button 
-                      variant="secondary" 
-                      size="sm" 
-                      onClick={() => viewDetails(scheme)}
-                    >
+                  </div>
+                  <p className="text-foreground/70 text-sm mb-4 line-clamp-2">{translate(scheme.description)}</p>
+                  <div className="flex items-center justify-between">
+                    <button className="text-xs text-primary hover:underline">
                       {translate("View Details")}
-                      <ChevronRight className="w-4 h-4" />
-                    </Button>
-                    <div className="flex gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleBookmark(scheme)}
-                        title={isBookmarked(scheme.id) ? translate("Remove Bookmark") : translate("Bookmark")}
-                      >
-                        {isBookmarked(scheme.id) ? (
-                          <BookmarkCheck className="text-primary" />
-                        ) : (
-                          <Bookmark />
-                        )}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleShare(scheme)}
-                        title={translate("Share")}
-                      >
-                        <Share2 />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleExport(scheme)}
-                        title={translate("Export")}
-                      >
-                        <FileDown />
-                      </Button>
+                    </button>
+                    <div className="flex items-center space-x-2">
+                      <button className="p-1.5 rounded-md bg-muted hover:bg-muted/80 transition-colors">
+                        <scheme.shareIcon className="w-4 h-4 text-muted-foreground" />
+                      </button>
+                      <button className="p-1.5 rounded-md bg-muted hover:bg-muted/80 transition-colors">
+                        <scheme.bookmarkIcon className="w-4 h-4 text-muted-foreground" />
+                      </button>
                     </div>
-                  </CardFooter>
-                </Card>
-              </motion.div>
-            ))
-          ) : (
-            <div className="col-span-full text-center py-12">
-              <p className="text-foreground/70">
-                {translate("No schemes found matching your search criteria. Try adjusting your filters.")}
+                  </div>
+                </div>
+              ))}
+          </div>
+          
+          {searchQuery && schemes.filter(scheme => 
+            scheme.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            scheme.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            scheme.description.toLowerCase().includes(searchQuery.toLowerCase())
+          ).length === 0 ? (
+            <div className="mt-8 text-center p-8 bg-white rounded-lg border border-gray-100">
+              <p className="text-lg font-medium text-foreground/70">
+                {translate("No schemes found matching")} "{searchQuery}"
               </p>
+              <p className="mt-2 text-muted-foreground">
+                {translate("Try a different search term or browse by category")}
+              </p>
+            </div>
+          ) : null}
+          
+          {!searchQuery && (
+            <div className="mt-8 text-center">
+              <button className="px-6 py-3 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary transition-colors">
+                {translate("Browse All Schemes")}
+              </button>
             </div>
           )}
         </div>
       </div>
-      
-      {/* Scheme details modal */}
-      {showDetails && activeScheme && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <motion.div 
-            className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-auto"
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-          >
-            <div className="p-6">
-              <div className="flex justify-between items-start mb-4">
-                <div>
-                  <Badge className="mb-2">{activeScheme.category}</Badge>
-                  {activeScheme.stateSpecific && (
-                    <Badge variant="outline" className="ml-2">
-                      {activeScheme.state}
-                    </Badge>
-                  )}
-                  <h2 className="text-2xl font-bold">{activeScheme.name}</h2>
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleBookmark(activeScheme)}
-                  >
-                    {isBookmarked(activeScheme.id) ? (
-                      <BookmarkCheck className="text-primary" />
-                    ) : (
-                      <Bookmark />
-                    )}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleShare(activeScheme)}
-                  >
-                    <Share2 />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleExport(activeScheme)}
-                  >
-                    <FileDown />
-                  </Button>
-                </div>
-              </div>
-              
-              <div className="space-y-4 mb-6">
-                <div>
-                  <h3 className="text-sm font-medium text-foreground/50 uppercase">{translate("Description")}</h3>
-                  <p className="mt-1">{activeScheme.description}</p>
-                </div>
-                <div>
-                  <h3 className="text-sm font-medium text-foreground/50 uppercase">{translate("Eligibility")}</h3>
-                  <p className="mt-1">{activeScheme.eligibility}</p>
-                </div>
-                <div>
-                  <h3 className="text-sm font-medium text-foreground/50 uppercase">{translate("Benefits")}</h3>
-                  <p className="mt-1">{activeScheme.benefits}</p>
-                </div>
-                {activeScheme.stateSpecific && (
-                  <div>
-                    <h3 className="text-sm font-medium text-foreground/50 uppercase">{translate("State")}</h3>
-                    <p className="mt-1">{activeScheme.state}</p>
-                  </div>
-                )}
-              </div>
-              
-              <div className="flex justify-end">
-                <Button
-                  variant="secondary"
-                  onClick={closeDetails}
-                >
-                  {translate("Close")}
-                </Button>
-              </div>
-            </div>
-          </motion.div>
-        </div>
-      )}
     </section>
   );
 };

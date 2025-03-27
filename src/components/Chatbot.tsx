@@ -11,7 +11,8 @@ import {
   VolumeX, 
   Loader2, 
   Bot, 
-  User 
+  User,
+  MessageSquare
 } from 'lucide-react';
 
 interface Message {
@@ -20,6 +21,16 @@ interface Message {
   sender: 'user' | 'bot';
   timestamp: Date;
 }
+
+// Pre-defined questions that users can click on
+const PREDEFINED_QUESTIONS = [
+  "What pension schemes are available for senior citizens?",
+  "How can I apply for education scholarships?",
+  "Tell me about farmer assistance programs",
+  "What health insurance schemes does the government offer?",
+  "Housing schemes for low-income families",
+  "Employment programs for rural areas"
+];
 
 const Chatbot: React.FC = () => {
   const { translate, currentLanguage } = useLanguage();
@@ -88,12 +99,14 @@ const Chatbot: React.FC = () => {
     }
   };
 
-  const sendMessage = async () => {
-    if (inputValue.trim() === '' || isProcessing) return;
+  const sendMessage = async (text = inputValue) => {
+    if ((text.trim() === '' && inputValue.trim() === '') || isProcessing) return;
+    
+    const messageText = text.trim() === '' ? inputValue : text;
     
     const userMessage: Message = {
       id: Date.now(),
-      text: inputValue,
+      text: messageText,
       sender: 'user',
       timestamp: new Date()
     };
@@ -108,14 +121,18 @@ const Chatbot: React.FC = () => {
     setTimeout(() => {
       let botResponse = '';
       
-      if (inputValue.toLowerCase().includes('pension')) {
+      if (messageText.toLowerCase().includes('pension')) {
         botResponse = "The National Pension Scheme (NPS) is available for all citizens. To apply, you need to be between 18-60 years of age. You can contribute a minimum of ₹500 per month or ₹6,000 per year.";
-      } else if (inputValue.toLowerCase().includes('education') || inputValue.toLowerCase().includes('scholarship')) {
+      } else if (messageText.toLowerCase().includes('education') || messageText.toLowerCase().includes('scholarship')) {
         botResponse = "For education scholarships, check the National Scholarship Portal. Eligibility varies by scheme, but most require family income below ₹6 lakh per annum and good academic performance.";
-      } else if (inputValue.toLowerCase().includes('farmer') || inputValue.toLowerCase().includes('agriculture')) {
+      } else if (messageText.toLowerCase().includes('farmer') || messageText.toLowerCase().includes('agriculture')) {
         botResponse = "PM-KISAN provides income support of ₹6,000 per year to all landholding farmer families. Register through the local agriculture officer or the PM-KISAN portal with your land records and bank account details.";
-      } else if (inputValue.toLowerCase().includes('health') || inputValue.toLowerCase().includes('insurance') || inputValue.toLowerCase().includes('medical')) {
+      } else if (messageText.toLowerCase().includes('health') || messageText.toLowerCase().includes('insurance') || messageText.toLowerCase().includes('medical')) {
         botResponse = "Ayushman Bharat provides health coverage up to ₹5 lakh per family per year. It's available to poor and vulnerable families identified through the SECC database.";
+      } else if (messageText.toLowerCase().includes('housing') || messageText.toLowerCase().includes('home')) {
+        botResponse = "Pradhan Mantri Awas Yojana (PMAY) offers affordable housing for the urban and rural poor. Under this scheme, eligible beneficiaries can receive financial assistance to build or purchase a house.";
+      } else if (messageText.toLowerCase().includes('employment') || messageText.toLowerCase().includes('job')) {
+        botResponse = "The Mahatma Gandhi National Rural Employment Guarantee Act (MGNREGA) guarantees 100 days of wage employment in a financial year to rural households. Register with your local Gram Panchayat with your identity proof and address details.";
       } else {
         botResponse = "Thank you for your question. To find specific government schemes, please provide details about your area of interest (like education, health, agriculture), your state, and your specific requirements. I can then suggest relevant schemes and eligibility criteria.";
       }
@@ -143,6 +160,11 @@ const Chatbot: React.FC = () => {
     }
   };
 
+  const handleQuestionClick = (question: string) => {
+    setInputValue(question);
+    sendMessage(question);
+  };
+
   return (
     <section id="ai-assistant" className="py-16">
       <div className="container mx-auto px-4">
@@ -158,7 +180,7 @@ const Chatbot: React.FC = () => {
           </p>
         </div>
         
-        <div className="max-w-3xl mx-auto">
+        <div className="max-w-4xl mx-auto"> {/* Increased max-width from 3xl to 4xl */}
           <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100">
             {/* Chat header */}
             <div className="bg-primary text-white p-4 flex items-center justify-between">
@@ -267,7 +289,7 @@ const Chatbot: React.FC = () => {
                       ? translate("Listening...")
                       : translate("Type your message or use voice input...")
                   }
-                  className="flex-1 p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                  className="flex-1 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                   disabled={isListening}
                 />
                 
@@ -290,7 +312,7 @@ const Chatbot: React.FC = () => {
                 </button>
                 
                 <button
-                  onClick={sendMessage}
+                  onClick={() => sendMessage()}
                   disabled={inputValue.trim() === '' || isProcessing}
                   className={`p-2 rounded-full bg-primary text-white ${
                     inputValue.trim() === '' || isProcessing
@@ -311,26 +333,26 @@ const Chatbot: React.FC = () => {
             </div>
           </div>
           
-          {/* Voice commands help */}
+          {/* Predefined questions section */}
           <div className="mt-6 bg-white rounded-lg shadow-sm border border-gray-100 p-4">
-            <h3 className="text-sm font-medium mb-2">{translate("Example Voice Commands:")}</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-              <div className="flex items-center text-foreground/70">
-                <span className="bg-primary/10 text-primary rounded-full w-6 h-6 flex items-center justify-center mr-2">1</span>
-                {translate("Tell me about pension schemes")}
-              </div>
-              <div className="flex items-center text-foreground/70">
-                <span className="bg-primary/10 text-primary rounded-full w-6 h-6 flex items-center justify-center mr-2">2</span>
-                {translate("What are the education scholarships available?")}
-              </div>
-              <div className="flex items-center text-foreground/70">
-                <span className="bg-primary/10 text-primary rounded-full w-6 h-6 flex items-center justify-center mr-2">3</span>
-                {translate("Help for farmers in Kerala")}
-              </div>
-              <div className="flex items-center text-foreground/70">
-                <span className="bg-primary/10 text-primary rounded-full w-6 h-6 flex items-center justify-center mr-2">4</span>
-                {translate("Health insurance schemes for my family")}
-              </div>
+            <h3 className="text-sm font-medium mb-3 flex items-center">
+              <MessageSquare className="w-4 h-4 mr-2 text-primary" />
+              {translate("Popular Questions:")}
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {PREDEFINED_QUESTIONS.map((question, index) => (
+                <button
+                  key={index}
+                  onClick={() => handleQuestionClick(question)}
+                  className="flex items-center text-left p-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors text-sm"
+                  disabled={isProcessing}
+                >
+                  <span className="bg-primary/10 text-primary rounded-full w-6 h-6 flex items-center justify-center mr-3 flex-shrink-0">
+                    {index + 1}
+                  </span>
+                  <span className="text-foreground/80">{translate(question)}</span>
+                </button>
+              ))}
             </div>
           </div>
         </div>
