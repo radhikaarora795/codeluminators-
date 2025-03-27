@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { useLanguage } from '../context/LanguageContext';
+import { useBookmarks } from '../context/BookmarkContext';
 import StateSelector from './StateSelector';
 import { 
   Check, 
@@ -12,11 +13,30 @@ import {
   Calendar, 
   Heart, 
   Home, 
-  Tractor
+  Tractor,
+  Bookmark,
+  Share2,
+  FileDown,
+  BookmarkCheck
 } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { fadeInUp } from '../utils/animations';
+import { toast } from '@/hooks/use-toast';
+
+interface SchemeResult {
+  id: number;
+  name: string;
+  description: string;
+  eligibility: string;
+  benefits: string;
+  category: string;
+  stateSpecific?: boolean;
+  state?: string;
+}
 
 const EligibilityChecker: React.FC = () => {
   const { translate } = useLanguage();
+  const { addBookmark, isBookmarked } = useBookmarks();
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     state: '',
@@ -27,9 +47,10 @@ const EligibilityChecker: React.FC = () => {
     education: '',
     category: '',
     disability: 'no',
+    maritalStatus: '',
     interests: [] as string[]
   });
-  const [results, setResults] = useState<any[]>([]);
+  const [results, setResults] = useState<SchemeResult[]>([]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -59,8 +80,10 @@ const EligibilityChecker: React.FC = () => {
 
   const checkEligibility = () => {
     // In a real app, this would call an API to get matching schemes
-    // For now, we'll just set some dummy results
-    setResults([
+    // For now, we'll set some context-aware results based on the form inputs
+
+    // Get some basic schemes that everyone qualifies for
+    const baseSchemes: SchemeResult[] = [
       {
         id: 1,
         name: 'PM Kisan Samman Nidhi',
@@ -76,17 +99,166 @@ const EligibilityChecker: React.FC = () => {
         eligibility: 'Low income families',
         benefits: 'Coverage up to ₹5 lakh per family per year',
         category: 'Health'
-      },
-      {
-        id: 3,
-        name: 'PM Awas Yojana',
-        description: 'Housing scheme for all',
-        eligibility: 'Low income families without proper housing',
-        benefits: 'Financial assistance for house construction',
-        category: 'Housing'
       }
-    ]);
+    ];
+    
+    // Add dynamic schemes based on user inputs
+    let dynamicSchemes: SchemeResult[] = [];
+    
+    // Check for occupation-specific schemes
+    if (formData.occupation === 'farmer') {
+      dynamicSchemes.push({
+        id: 3,
+        name: 'Soil Health Card Scheme',
+        description: 'Soil testing and nutrient recommendations',
+        eligibility: 'All farmers',
+        benefits: 'Free soil health card and personalized recommendations',
+        category: 'Agriculture'
+      });
+    }
+    
+    // Check for income and education based schemes
+    if (formData.income === 'below-1l' || formData.income === '1l-3l') {
+      if (formData.education === 'below-10th' || formData.education === '10th-pass') {
+        dynamicSchemes.push({
+          id: 4,
+          name: 'Pradhan Mantri Kaushal Vikas Yojana',
+          description: 'Skill development training',
+          eligibility: 'Youth with basic education',
+          benefits: 'Free skill training and certification',
+          category: 'Skill Development'
+        });
+      }
+    }
+    
+    // Check for gender-specific schemes
+    if (formData.gender === 'female') {
+      dynamicSchemes.push({
+        id: 5,
+        name: 'Beti Bachao Beti Padhao',
+        description: 'Promote education for girls',
+        eligibility: 'Girl children',
+        benefits: 'Educational incentives and scholarships',
+        category: 'Education'
+      });
+    }
+    
+    // Check for disability schemes
+    if (formData.disability === 'yes') {
+      dynamicSchemes.push({
+        id: 6,
+        name: 'Assistance to Disabled Persons Scheme',
+        description: 'Support for assistive devices',
+        eligibility: 'Persons with disabilities',
+        benefits: 'Subsidized assistive devices and aids',
+        category: 'Disability Welfare'
+      });
+    }
+    
+    // Check for state-specific schemes
+    if (formData.state === 'kerala') {
+      dynamicSchemes.push({
+        id: 7,
+        name: 'Kerala Karunya Health Scheme',
+        description: 'Financial assistance for medical treatment',
+        eligibility: 'Kerala residents with low income',
+        benefits: 'Financial support for critical illnesses',
+        category: 'Health',
+        stateSpecific: true,
+        state: 'Kerala'
+      });
+    } else if (formData.state === 'tamil-nadu') {
+      dynamicSchemes.push({
+        id: 8,
+        name: 'Tamil Nadu Chief Minister\'s Health Insurance',
+        description: 'Comprehensive health coverage',
+        eligibility: 'Tamil Nadu residents',
+        benefits: 'Health insurance coverage up to ₹5 lakh',
+        category: 'Health',
+        stateSpecific: true,
+        state: 'Tamil Nadu'
+      });
+    } else if (formData.state === 'gujarat') {
+      dynamicSchemes.push({
+        id: 9,
+        name: 'Gujarat Mukhyamantri Yuva Swavalamban Yojana',
+        description: 'Education support for youth',
+        eligibility: 'Students from Gujarat with family income below ₹6 lakh',
+        benefits: 'Financial assistance for higher education',
+        category: 'Education',
+        stateSpecific: true,
+        state: 'Gujarat'
+      });
+    }
+    
+    // Combine and set results
+    setResults([...baseSchemes, ...dynamicSchemes]);
     nextStep();
+  };
+
+  const handleBookmark = (scheme: SchemeResult) => {
+    addBookmark(scheme);
+    toast({
+      title: translate("Scheme Bookmarked"),
+      description: translate("You can access this scheme in your bookmarks."),
+    });
+  };
+
+  const handleShare = (scheme: SchemeResult) => {
+    if (navigator.share) {
+      navigator.share({
+        title: scheme.name,
+        text: `${scheme.name}: ${scheme.description}`,
+        url: window.location.href,
+      }).then(() => {
+        toast({
+          title: translate("Shared Successfully"),
+          description: translate("The scheme information has been shared."),
+        });
+      }).catch((error) => {
+        console.error('Error sharing:', error);
+      });
+    } else {
+      // Fallback for browsers that don't support the Share API
+      const shareText = `${scheme.name}: ${scheme.description} - ${scheme.benefits}`;
+      navigator.clipboard.writeText(shareText);
+      toast({
+        title: translate("Copied to Clipboard"),
+        description: translate("The scheme information has been copied to clipboard."),
+      });
+    }
+  };
+
+  const handleExport = (scheme: SchemeResult) => {
+    const schemeText = `
+      ${scheme.name}
+      ${'-'.repeat(scheme.name.length)}
+      
+      ${translate("Description")}: ${scheme.description}
+      
+      ${translate("Eligibility")}: ${scheme.eligibility}
+      
+      ${translate("Benefits")}: ${scheme.benefits}
+      
+      ${translate("Category")}: ${scheme.category}
+      
+      ${scheme.stateSpecific ? `${translate("State")}: ${scheme.state}` : ''}
+    `;
+    
+    const blob = new Blob([schemeText], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${scheme.name.replace(/\s+/g, '-').toLowerCase()}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    toast({
+      title: translate("Export Successful"),
+      description: translate("Scheme details have been exported as a text file."),
+    });
   };
 
   const renderStepContent = () => {
@@ -182,6 +354,22 @@ const EligibilityChecker: React.FC = () => {
                   <option value="self-employed">{translate("Self-employed")}</option>
                   <option value="student">{translate("Student")}</option>
                   <option value="unemployed">{translate("Unemployed")}</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">{translate("Marital Status")}</label>
+                <select
+                  name="maritalStatus"
+                  value={formData.maritalStatus}
+                  onChange={handleInputChange}
+                  className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                >
+                  <option value="">{translate("Select marital status")}</option>
+                  <option value="single">{translate("Single")}</option>
+                  <option value="married">{translate("Married")}</option>
+                  <option value="widowed">{translate("Widowed")}</option>
+                  <option value="divorced">{translate("Divorced")}</option>
                 </select>
               </div>
             </div>
@@ -325,18 +513,32 @@ const EligibilityChecker: React.FC = () => {
       
       case 4:
         return (
-          <div className="animate-fade-in">
+          <motion.div
+            className="animate-fade-in"
+            initial="hidden"
+            animate="visible"
+            variants={fadeInUp}
+          >
             <h3 className="text-xl font-semibold mb-2">{translate("Eligible Schemes")}</h3>
             <p className="text-foreground/70 mb-6">{translate("Based on your profile, you may be eligible for the following schemes:")}</p>
             
             {results.length > 0 ? (
               <div className="space-y-4">
                 {results.map((scheme) => (
-                  <div key={scheme.id} className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm card-hover">
+                  <motion.div 
+                    key={scheme.id} 
+                    className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm hover:shadow-md transition-shadow"
+                    variants={fadeInUp}
+                  >
                     <div className="flex items-start justify-between">
                       <div>
                         <h4 className="text-lg font-semibold text-primary">{scheme.name}</h4>
                         <p className="text-sm text-foreground/70 mb-2">{scheme.description}</p>
+                        {scheme.stateSpecific && (
+                          <span className="inline-block px-2 py-1 text-xs bg-blue-50 text-blue-600 rounded-full mb-2">
+                            {scheme.state}
+                          </span>
+                        )}
                       </div>
                       <span className="px-2 py-1 text-xs font-medium bg-primary/10 text-primary rounded-full">
                         {scheme.category}
@@ -354,12 +556,35 @@ const EligibilityChecker: React.FC = () => {
                       </div>
                     </div>
                     
-                    <div className="mt-4 flex justify-end">
-                      <button className="btn-secondary text-sm px-4 py-1 rounded-full">
-                        {translate("View Details")}
+                    <div className="mt-4 flex justify-end space-x-2">
+                      <button 
+                        onClick={() => handleBookmark(scheme)}
+                        className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+                        title={translate("Bookmark")}
+                        disabled={isBookmarked(scheme.id)}
+                      >
+                        {isBookmarked(scheme.id) ? (
+                          <BookmarkCheck className="w-4 h-4 text-primary" />
+                        ) : (
+                          <Bookmark className="w-4 h-4 text-gray-500" />
+                        )}
+                      </button>
+                      <button 
+                        onClick={() => handleShare(scheme)}
+                        className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+                        title={translate("Share")}
+                      >
+                        <Share2 className="w-4 h-4 text-gray-500" />
+                      </button>
+                      <button 
+                        onClick={() => handleExport(scheme)}
+                        className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+                        title={translate("Export")}
+                      >
+                        <FileDown className="w-4 h-4 text-gray-500" />
                       </button>
                     </div>
-                  </div>
+                  </motion.div>
                 ))}
               </div>
             ) : (
@@ -384,7 +609,7 @@ const EligibilityChecker: React.FC = () => {
                 {translate("Start Over")}
               </button>
             </div>
-          </div>
+          </motion.div>
         );
       
       default:
