@@ -1,13 +1,16 @@
+
 import React, { useState } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { Filter, Search, BookmarkIcon, Share2Icon, Leaf, Stethoscope, School, Home, Briefcase } from 'lucide-react';
-import { schemes } from '../data/schemes';
+import { schemes, getCategories } from '../data/schemes';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
 
 const SchemeSearch: React.FC = () => {
   const { translate } = useLanguage();
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const categories = getCategories();
   
   const getCategoryIcon = (category: string) => {
     switch (category.toLowerCase()) {
@@ -44,6 +47,23 @@ const SchemeSearch: React.FC = () => {
         return 'primary';
     }
   };
+
+  const handleCategoryClick = (category: string | null) => {
+    setSelectedCategory(category);
+  };
+
+  const filteredSchemes = schemes.filter(scheme => {
+    // Filter by search query
+    const matchesSearch = searchQuery === '' || 
+      scheme.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      scheme.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      scheme.description.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    // Filter by category
+    const matchesCategory = selectedCategory === null || scheme.category === selectedCategory;
+    
+    return matchesSearch && matchesCategory;
+  });
   
   return (
     <section id="scheme-search" className="py-16 bg-muted/30">
@@ -81,40 +101,29 @@ const SchemeSearch: React.FC = () => {
           
           <div className="mt-6 flex flex-wrap gap-3 justify-center">
             <Button 
-              variant="ghost" 
-              className="px-4 py-2 rounded-full bg-primary/10 text-primary text-sm hover:bg-primary/20 transition-colors"
+              variant={selectedCategory === null ? "default" : "ghost"}
+              className={`px-4 py-2 rounded-full ${selectedCategory === null ? 'bg-primary text-primary-foreground' : 'bg-white text-foreground/70'} text-sm transition-colors`}
+              onClick={() => handleCategoryClick(null)}
             >
               {translate("All Schemes")}
             </Button>
-            <button className="px-4 py-2 rounded-full bg-white text-foreground/70 text-sm hover:bg-gray-100 transition-colors">
-              {translate("Agriculture")}
-            </button>
-            <button className="px-4 py-2 rounded-full bg-white text-foreground/70 text-sm hover:bg-gray-100 transition-colors">
-              {translate("Education")}
-            </button>
-            <button className="px-4 py-2 rounded-full bg-white text-foreground/70 text-sm hover:bg-gray-100 transition-colors">
-              {translate("Health")}
-            </button>
-            <button className="px-4 py-2 rounded-full bg-white text-foreground/70 text-sm hover:bg-gray-100 transition-colors">
-              {translate("Housing")}
-            </button>
-            <button className="px-4 py-2 rounded-full bg-white text-foreground/70 text-sm hover:bg-gray-100 transition-colors">
-              {translate("Employment")}
-            </button>
+            
+            {categories.map((category) => (
+              <Button
+                key={category}
+                variant={selectedCategory === category ? "default" : "ghost"}
+                className={`px-4 py-2 rounded-full ${selectedCategory === category ? 'bg-primary text-primary-foreground' : 'bg-white text-foreground/70'} text-sm transition-colors`}
+                onClick={() => handleCategoryClick(category)}
+              >
+                {translate(category)}
+              </Button>
+            ))}
           </div>
           
           <div className="mt-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
-            {schemes
-              .filter(scheme => 
-                searchQuery === '' || 
-                scheme.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                scheme.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                scheme.description.toLowerCase().includes(searchQuery.toLowerCase())
-              )
-              .slice(0, 4)
-              .map((scheme) => {
-                const colorScheme = getCategoryColorScheme(scheme.category);
-                const Icon = getCategoryIcon(scheme.category);
+            {filteredSchemes.slice(0, 4).map((scheme) => {
+                const colorScheme = scheme.colorScheme || getCategoryColorScheme(scheme.category);
+                const Icon = scheme.icon || getCategoryIcon(scheme.category);
                 
                 return (
                   <div key={scheme.id} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
@@ -134,10 +143,10 @@ const SchemeSearch: React.FC = () => {
                       </button>
                       <div className="flex items-center space-x-2">
                         <button className="p-1.5 rounded-md bg-muted hover:bg-muted/80 transition-colors">
-                          <Share2Icon className="w-4 h-4 text-muted-foreground" />
+                          {scheme.shareIcon || <Share2Icon className="w-4 h-4 text-muted-foreground" />}
                         </button>
                         <button className="p-1.5 rounded-md bg-muted hover:bg-muted/80 transition-colors">
-                          <BookmarkIcon className="w-4 h-4 text-muted-foreground" />
+                          {scheme.bookmarkIcon || <BookmarkIcon className="w-4 h-4 text-muted-foreground" />}
                         </button>
                       </div>
                     </div>
@@ -146,22 +155,17 @@ const SchemeSearch: React.FC = () => {
               })}
           </div>
           
-          {searchQuery && schemes.filter(scheme => 
-            scheme.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            scheme.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            scheme.description.toLowerCase().includes(searchQuery.toLowerCase())
-          ).length === 0 ? (
+          {filteredSchemes.length === 0 ? (
             <div className="mt-8 text-center p-8 bg-white rounded-lg border border-gray-100">
               <p className="text-lg font-medium text-foreground/70">
-                {translate("No schemes found matching")} "{searchQuery}"
+                {translate("No schemes found matching")} {searchQuery ? `"${searchQuery}"` : ""}
+                {selectedCategory ? ` ${translate("in")} ${translate(selectedCategory)}` : ""}
               </p>
               <p className="mt-2 text-muted-foreground">
                 {translate("Try a different search term or browse by category")}
               </p>
             </div>
-          ) : null}
-          
-          {!searchQuery && (
+          ) : filteredSchemes.length > 4 && (
             <div className="mt-8 text-center">
               <button className="px-6 py-3 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary transition-colors">
                 {translate("Browse All Schemes")}
