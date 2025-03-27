@@ -1,6 +1,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useLanguage } from '../context/LanguageContext';
+import { Language } from '../assets/languages';
 
 interface SpeechRecognitionHook {
   text: string;
@@ -8,6 +9,7 @@ interface SpeechRecognitionHook {
   startListening: () => void;
   stopListening: () => void;
   hasRecognitionSupport: boolean;
+  clearText: () => void; // Add the missing clearText function
 }
 
 export const useSpeechRecognition = (): SpeechRecognitionHook => {
@@ -32,21 +34,21 @@ export const useSpeechRecognition = (): SpeechRecognitionHook => {
 
   useEffect(() => {
     if (recognition) {
-      // Set the language based on the currentLanguage
-      switch (currentLanguage) {
-        case 'hi':
+      // Set the language based on the currentLanguage.id instead of comparing with strings
+      switch (currentLanguage.id) {
+        case 'hindi':
           recognition.lang = 'hi-IN';
           break;
-        case 'gu':
+        case 'gujarati':
           recognition.lang = 'gu-IN';
           break;
-        case 'ta':
+        case 'tamil':
           recognition.lang = 'ta-IN';
           break;
-        case 'mr':
+        case 'marathi':
           recognition.lang = 'mr-IN';
           break;
-        case 'bn':
+        case 'bengali':
           recognition.lang = 'bn-IN';
           break;
         default:
@@ -92,12 +94,18 @@ export const useSpeechRecognition = (): SpeechRecognitionHook => {
     }
   }, [recognition]);
   
+  // Add the clearText function implementation
+  const clearText = useCallback(() => {
+    setText('');
+  }, []);
+  
   return {
     text,
     isListening,
     startListening,
     stopListening,
-    hasRecognitionSupport
+    hasRecognitionSupport,
+    clearText
   };
 };
 
