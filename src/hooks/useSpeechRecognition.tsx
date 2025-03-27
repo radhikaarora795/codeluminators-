@@ -2,73 +2,19 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 
-// Add type definitions for the Web Speech API
-interface SpeechRecognitionEvent extends Event {
-  results: SpeechRecognitionResultList;
-  resultIndex: number;
-  error: SpeechRecognitionError;
-}
-
-interface SpeechRecognitionError extends Event {
-  error: string;
-  message: string;
-}
-
-interface SpeechRecognitionResultList {
-  length: number;
-  item(index: number): SpeechRecognitionResult;
-  [index: number]: SpeechRecognitionResult;
-}
-
-interface SpeechRecognitionResult {
-  isFinal: boolean;
-  length: number;
-  item(index: number): SpeechRecognitionAlternative;
-  [index: number]: SpeechRecognitionAlternative;
-}
-
-interface SpeechRecognitionAlternative {
-  transcript: string;
-  confidence: number;
-}
-
-interface SpeechRecognition extends EventTarget {
-  continuous: boolean;
-  interimResults: boolean;
-  lang: string;
-  start(): void;
-  stop(): void;
-  abort(): void;
-  onresult: (event: SpeechRecognitionEvent) => void;
-  onerror: (event: SpeechRecognitionError) => void;
-  onend: () => void;
-}
-
-// Declare global interfaces to make TypeScript recognize SpeechRecognition
-declare global {
-  interface Window {
-    SpeechRecognition: {
-      new (): SpeechRecognition;
-    };
-    webkitSpeechRecognition: {
-      new (): SpeechRecognition;
-    };
-  }
-}
-
 interface SpeechRecognitionHook {
   text: string;
   isListening: boolean;
   startListening: () => void;
   stopListening: () => void;
   hasRecognitionSupport: boolean;
-  clearText: () => void;
 }
 
 export const useSpeechRecognition = (): SpeechRecognitionHook => {
-  const [text, setText] = useState<string>('');
-  const [isListening, setIsListening] = useState<boolean>(false);
+  const [text, setText] = useState('');
+  const [isListening, setIsListening] = useState(false);
   const [recognition, setRecognition] = useState<SpeechRecognition | null>(null);
+  const [hasRecognitionSupport, setHasRecognitionSupport] = useState(false);
   const { currentLanguage } = useLanguage();
 
   useEffect(() => {
@@ -78,9 +24,36 @@ export const useSpeechRecognition = (): SpeechRecognitionHook => {
       
       recognitionInstance.continuous = true;
       recognitionInstance.interimResults = true;
-      recognitionInstance.lang = currentLanguage.code;
       
-      recognitionInstance.onresult = (event) => {
+      setRecognition(recognitionInstance);
+      setHasRecognitionSupport(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (recognition) {
+      // Set the language based on the currentLanguage
+      switch (currentLanguage) {
+        case 'hi':
+          recognition.lang = 'hi-IN';
+          break;
+        case 'gu':
+          recognition.lang = 'gu-IN';
+          break;
+        case 'ta':
+          recognition.lang = 'ta-IN';
+          break;
+        case 'mr':
+          recognition.lang = 'mr-IN';
+          break;
+        case 'bn':
+          recognition.lang = 'bn-IN';
+          break;
+        default:
+          recognition.lang = 'en-IN';
+      }
+      
+      recognition.onresult = (event: SpeechRecognitionEvent) => {
         const transcript = Array.from(event.results)
           .map(result => result[0])
           .map(result => result.transcript)
@@ -89,49 +62,43 @@ export const useSpeechRecognition = (): SpeechRecognitionHook => {
         setText(transcript);
       };
       
-      recognitionInstance.onerror = (event) => {
+      recognition.onerror = (event: SpeechRecognitionError) => {
         console.error('Speech recognition error', event.error);
-        setIsListening(false);
+        stopListening();
       };
       
-      recognitionInstance.onend = () => {
+      recognition.onend = () => {
         setIsListening(false);
       };
-      
-      setRecognition(recognitionInstance);
     }
-    
-    return () => {
-      if (recognition) {
-        recognition.stop();
-      }
-    };
-  }, [currentLanguage]);
-
+  }, [recognition, currentLanguage]);
+  
   const startListening = useCallback(() => {
+    setText('');
     if (recognition) {
-      recognition.start();
-      setIsListening(true);
+      try {
+        recognition.start();
+        setIsListening(true);
+      } catch (error) {
+        console.error('Speech recognition error:', error);
+      }
     }
   }, [recognition]);
-
+  
   const stopListening = useCallback(() => {
     if (recognition) {
       recognition.stop();
       setIsListening(false);
     }
   }, [recognition]);
-
-  const clearText = useCallback(() => {
-    setText('');
-  }, []);
-
+  
   return {
     text,
     isListening,
     startListening,
     stopListening,
-    hasRecognitionSupport: !!recognition,
-    clearText
+    hasRecognitionSupport
   };
 };
+
+export default useSpeechRecognition;

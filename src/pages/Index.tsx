@@ -2,6 +2,7 @@
 import React from 'react';
 import Header from '../components/Header';
 import Hero from '../components/Hero';
+import SchemeSearch from '../components/SchemeSearch';
 import EligibilityChecker from '../components/EligibilityChecker';
 import Chatbot from '../components/Chatbot';
 import Footer from '../components/Footer';
@@ -11,6 +12,7 @@ const Index: React.FC = () => {
     <div className="min-h-screen bg-background">
       <Header />
       <Hero />
+      <SchemeSearch />
       <EligibilityChecker />
       <Chatbot />
       <div id="about" className="py-16 container mx-auto px-4">
