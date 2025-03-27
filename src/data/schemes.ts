@@ -1,4 +1,7 @@
 
+import { BookmarkIcon, Share2Icon } from 'lucide-react';
+import { LucideIcon } from 'lucide-react';
+
 export interface Scheme {
   id: number;
   name: string;
@@ -8,6 +11,10 @@ export interface Scheme {
   category: string;
   state?: string;
   stateSpecific?: boolean;
+  colorScheme?: string;
+  icon?: LucideIcon;
+  shareIcon?: LucideIcon;
+  bookmarkIcon?: LucideIcon;
 }
 
 // Sample scheme data
